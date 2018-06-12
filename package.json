@@ -3,6 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "apollo-cache-inmemory": "^1.2.2",
+    "apollo-client": "^2.3.2",
+    "apollo-link-http": "^1.5.4",
+    "graphql": "^0.13.2",
+    "graphql-tag": "^2.9.2",
     "react": "^16.4.0",
     "react-dom": "^16.4.0",
     "react-scripts": "1.1.4"
