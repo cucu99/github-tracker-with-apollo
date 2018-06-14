@@ -5,7 +5,7 @@ import WatchRepository from './WatchRepository';
 
 import Link from '../../Link';
 
-// import '../style.css';
+import '../style.css';
 
 const RepositoryItem = ({
   id,

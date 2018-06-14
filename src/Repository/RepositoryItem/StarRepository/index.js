@@ -110,7 +110,7 @@ const StarRepository = ({ id, stargazers, viewerHasStarred }) => (
             className={'RepositoryItem-title-action'}
             onClick={removeStar}
           >
-            {stargazers.totalCount} Remove Star
+            {stargazers.totalCount} UnStar
           </Button>
         )}
       </Mutation>
