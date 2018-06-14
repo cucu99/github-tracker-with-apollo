@@ -1,6 +1,6 @@
 import React, { Fragment } from 'react';
 
-import Loading from '../../Loading';
+import FetchMore from '../../FetchMore';
 import RepositoryItem from '../RepositoryItem';
 
 const updateQuery = (previousResult, { fetchMoreResult }) => {
@@ -31,26 +31,17 @@ const RepositoryList = ({ repositories, loading, fetchMore }) => (
         <RepositoryItem {...node} />
       </div>
     ))}
-
-    {loading ? (
-      <Loading />
-    ) : (
-      repositories.pageInfo.hasNextPage && (
-        <button
-          type="button"
-          onClick={() =>
-            fetchMore({
-              variables: {
-                cursor: repositories.pageInfo.endCursor
-              },
-              updateQuery
-            })
-          }
-        >
-          More Repositories
-        </button>
-      )
-    )}
+    <FetchMore
+      loading={loading}
+      hasNextPage={repositories.pageInfo.hasNextPage}
+      variables={{
+        cursor: repositories.pageInfo.endCursor
+      }}
+      updateQuery={updateQuery}
+      fetchMore={fetchMore}
+    >
+      Repositories
+    </FetchMore>
   </Fragment>
 );
 
