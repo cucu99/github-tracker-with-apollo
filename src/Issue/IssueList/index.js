@@ -1,10 +1,12 @@
 import React from 'react';
 import { Query } from 'react-apollo';
 import gql from 'graphql-tag';
+import { withState } from 'recompose';
 
 import IssueItem from '../IssueItem';
 import Loading from '../../Loading';
 import ErrorMessage from '../../Error';
+import { ButtonUnobtrusive } from '../../Button';
 
 import './style.css';
 
@@ -27,33 +29,74 @@ const GET_ISSUES_OF_REPOSITORY = gql`
   }
 `;
 
-const Issues = ({ repositoryOwner, repositoryName }) => (
+const ISSUE_STATES = {
+  NONE: 'NONE',
+  OPEN: 'OPEN',
+  CLOSED: 'CLOSED'
+};
+
+const TRANSITION_LABELS = {
+  [ISSUE_STATES.NONE]: 'Show Open Issues',
+  [ISSUE_STATES.OPEN]: 'Show Closed Issues',
+  [ISSUE_STATES.CLOSED]: 'Hide Issues'
+};
+
+const TRANSITION_STATE = {
+  [ISSUE_STATES.NONE]: ISSUE_STATES.OPEN,
+  [ISSUE_STATES.OPEN]: ISSUE_STATES.CLOSED,
+  [ISSUE_STATES.CLOSED]: ISSUE_STATES.NONE
+};
+
+const isShow = issueState => issueState !== ISSUE_STATES.NONE;
+
+const Issues = ({
+  repositoryOwner,
+  repositoryName,
+  issueState,
+  onChangeIssueState
+}) => (
   <div className="Issues">
-    <Query
-      query={GET_ISSUES_OF_REPOSITORY}
-      variables={{
-        repositoryOwner,
-        repositoryName
-      }}
+    <ButtonUnobtrusive
+      onClick={() => onChangeIssueState(TRANSITION_STATE[issueState])}
     >
-      {({ data, loading, error }) => {
-        if (error) {
-          return <ErrorMessage error={error} />;
-        }
+      {TRANSITION_LABELS[issueState]}
+    </ButtonUnobtrusive>
 
-        const { repository } = data;
+    {isShow(issueState) && (
+      <Query
+        query={GET_ISSUES_OF_REPOSITORY}
+        variables={{
+          repositoryOwner,
+          repositoryName
+        }}
+      >
+        {({ data, loading, error }) => {
+          if (error) {
+            return <ErrorMessage error={error} />;
+          }
 
-        if (loading && !repository) {
-          return <Loading />;
-        }
+          const { repository } = data;
 
-        if (!repository.issues.edges.length) {
-          return <div className="IssueList">No Issues ...</div>;
-        }
+          if (loading && !repository) {
+            return <Loading />;
+          }
 
-        return <IssueList issues={repository.issues} />;
-      }}
-    </Query>
+          const filteredRepository = {
+            issues: {
+              edges: repository.issues.edges.filter(
+                issue => issue.node.state === issueState
+              )
+            }
+          };
+
+          if (!filteredRepository.issues.edges.length) {
+            return <div className="IssueList">No Issues ...</div>;
+          }
+
+          return <IssueList issues={filteredRepository.issues} />;
+        }}
+      </Query>
+    )}
   </div>
 );
 
@@ -63,4 +106,6 @@ const IssueList = ({ issues }) => (
   </div>
 );
 
-export default Issues;
+export default withState('issueState', 'onChangeIssueState', ISSUE_STATES.NONE)(
+  Issues
+);
