@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { Fragment } from 'react';
 import { Query } from 'react-apollo';
 import gql from 'graphql-tag';
 import { withState } from 'recompose';
 
+import FetchMore from '../../FetchMore';
 import IssueItem from '../IssueItem';
 import Loading from '../../Loading';
 import ErrorMessage from '../../Error';
@@ -11,9 +12,14 @@ import { ButtonUnobtrusive } from '../../Button';
 import './style.css';
 
 const GET_ISSUES_OF_REPOSITORY = gql`
-  query($repositoryOwner: String!, $repositoryName: String!) {
+  query(
+    $repositoryOwner: String!
+    $repositoryName: String!
+    $issueState: IssueState!
+    $cursor: String
+  ) {
     repository(name: $repositoryName, owner: $repositoryOwner) {
-      issues(first: 5) {
+      issues(first: 5, states: [$issueState], after: $cursor) {
         edges {
           node {
             id
@@ -23,6 +29,10 @@ const GET_ISSUES_OF_REPOSITORY = gql`
             url
             bodyHTML
           }
+        }
+        pageInfo {
+          endCursor
+          hasNextPage
         }
       }
     }
@@ -67,10 +77,12 @@ const Issues = ({
         query={GET_ISSUES_OF_REPOSITORY}
         variables={{
           repositoryOwner,
-          repositoryName
+          repositoryName,
+          issueState
         }}
+        notifyOnNetworkStatusChange={true}
       >
-        {({ data, loading, error }) => {
+        {({ data, loading, error, fetchMore }) => {
           if (error) {
             return <ErrorMessage error={error} />;
           }
@@ -81,29 +93,59 @@ const Issues = ({
             return <Loading />;
           }
 
-          const filteredRepository = {
-            issues: {
-              edges: repository.issues.edges.filter(
-                issue => issue.node.state === issueState
-              )
-            }
-          };
-
-          if (!filteredRepository.issues.edges.length) {
-            return <div className="IssueList">No Issues ...</div>;
-          }
-
-          return <IssueList issues={filteredRepository.issues} />;
+          return (
+            <IssueList
+              loading={loading}
+              issues={repository.issues}
+              fetchMore={fetchMore}
+              entry="repository"
+            />
+          );
         }}
       </Query>
     )}
   </div>
 );
+// TODO: refactor to new file
+const getUpdateQuery = entry => (previousResult, { fetchMoreResult }) => {
+  if (!fetchMoreResult) {
+    return previousResult;
+  }
 
-const IssueList = ({ issues }) => (
-  <div className="IssueList">
-    {issues.edges.map(({ node }) => <IssueItem key={node.id} issue={node} />)}
-  </div>
+  return {
+    ...previousResult,
+    [entry]: {
+      ...previousResult[entry],
+      issues: {
+        ...previousResult[entry].issues,
+        ...fetchMoreResult[entry].issues,
+        edges: [
+          ...previousResult[entry].issues.edges,
+          ...fetchMoreResult[entry].issues.edges
+        ]
+      }
+    }
+  };
+};
+
+const IssueList = ({ issues, loading, fetchMore, entry }) => (
+  <Fragment>
+    <div className="IssueList">
+      {issues.edges.map(({ node }) => <IssueItem key={node.id} issue={node} />)}
+
+      <FetchMore
+        loading={loading}
+        hasNextPage={issues.pageInfo.hasNextPage}
+        variables={{
+          cursor: issues.pageInfo.endCursor
+        }}
+        updateQuery={getUpdateQuery(entry)}
+        fetchMore={fetchMore}
+      >
+        Issues
+      </FetchMore>
+    </div>
+  </Fragment>
 );
 
 export default withState('issueState', 'onChangeIssueState', ISSUE_STATES.NONE)(
